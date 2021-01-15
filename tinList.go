@@ -6,11 +6,11 @@ type TinList struct {
 	len    int
 }
 
-// TinElement 双向链表 每个元素
+// TinElement 双向链表 元素
 type TinElement struct {
-	nextEl, froEl *TinElement
-	list          *TinList
-	Value         interface{}
+	nextEl, prevEl *TinElement
+	list           *TinList
+	Value          interface{}
 }
 
 // NewList 初始化list
@@ -21,7 +21,8 @@ func NewList() *TinList {
 // initList 初始化操作
 func (l *TinList) initList() *TinList {
 	l.rootEl.nextEl = &l.rootEl
-	l.rootEl.froEl = &l.rootEl
+	l.rootEl.prevEl = &l.rootEl
+	l.rootEl.list = l
 	l.len = 0
 
 	return l
@@ -43,7 +44,7 @@ func (l *TinList) PushFront(val interface{}) *TinList {
 // PushGetBack 把数据放入表尾 并返回元素指针
 func (l *TinList) PushGetBack(val interface{}) *TinElement {
 	insertElement := &TinElement{Value: val}
-	l.Insert(insertElement, l.rootEl.froEl)
+	l.Insert(insertElement, l.rootEl.prevEl)
 	return insertElement
 }
 
@@ -60,10 +61,14 @@ func (l *TinList) Len() int {
 
 // Insert 在after元素后面加入一个新元素e
 func (l *TinList) Insert(e *TinElement, after *TinElement) {
-	e.froEl = after
+	if l != after.list {
+		return
+	}
+
+	e.prevEl = after
 	e.nextEl = after.nextEl
-	e.nextEl.froEl = e
-	e.froEl.nextEl = e
+	e.nextEl.prevEl = e
+	e.prevEl.nextEl = e
 	e.list = l
 	l.len++
 }
@@ -84,9 +89,60 @@ func (e *TinElement) GetNext() *TinElement {
 
 // GetFront 获取上一个元素 用于迭代
 func (e *TinElement) GetFront() *TinElement {
-	if ne := e.froEl; ne != nil && ne != &e.list.rootEl {
+	if ne := e.prevEl; ne != nil && ne != &e.list.rootEl {
 		return ne
 	}
 
 	return nil
+}
+
+// MoveAfter 移动元素把e移动到after之后 并返回list指针
+func (l *TinList) MoveAfter(e, after *TinElement) *TinList {
+	l.MoveGet(e, after)
+	return l
+}
+
+// MoveBefore 移动元素把e移动到before之后 并返回list指针
+func (l *TinList) MoveBefore(e, before *TinElement) *TinList {
+	l.MoveGet(e, before.prevEl)
+	return l
+}
+
+// MoveFront 把元素移动到链表头
+func (l *TinList) MoveFront(e *TinElement) *TinElement {
+	return l.MoveGet(e, &l.rootEl)
+}
+
+// MoveBack 把元素移动到链表尾
+func (l *TinList) MoveBack(e *TinElement) *TinElement {
+	return l.MoveGet(e, l.rootEl.prevEl)
+}
+
+// MoveGet 移动元素把e移动到after之后 并返回元素e
+func (l *TinList) MoveGet(e, after *TinElement) *TinElement {
+	if l != e.list || l != after.list || e == after {
+		return e
+	}
+	e.prevEl.nextEl = e.nextEl
+	e.nextEl.prevEl = e.prevEl
+
+	e.prevEl = after
+	e.nextEl = after.nextEl
+	e.prevEl.nextEl = e
+	e.nextEl.prevEl = e
+
+	return e
+}
+
+// Delete 删除元素
+func (l *TinList) Delete(e *TinElement) interface{} {
+	e.prevEl.nextEl = e.nextEl
+	e.nextEl.prevEl = e.prevEl
+
+	e.nextEl = nil
+	e.prevEl = nil
+	e.list = nil
+	l.len--
+
+	return e.Value
 }
